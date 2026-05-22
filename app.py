@@ -1,5 +1,5 @@
 import streamlit as st
-from openai import OpenAI
+import pandas as pd
 
 # =========================================
 # PAGE CONFIG
@@ -11,47 +11,31 @@ st.set_page_config(
 )
 
 # =========================================
-# LOAD OPENAI CLIENT
+# SIDEBAR (API INPUT)
 # =========================================
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+st.sidebar.header("🔐 API Configuration")
 
-# =========================================
-# CUSTOM CSS
-# =========================================
-st.markdown("""
-<style>
-.stApp {
-    background-color: #0b1c17;
-    color: white;
-}
+use_api = st.sidebar.toggle("Use your own API", value=True)
 
-.title {
-    font-size: 50px;
-    font-weight: bold;
-    text-align: center;
-    color: #1de9b6;
-}
+api_key = None
 
-.subtitle {
-    text-align: center;
-    color: #7bd3c6;
-    margin-bottom: 30px;
-}
+if use_api:
+    api_key = st.sidebar.text_input(
+        "Enter OpenAI API Key",
+        type="password",
+        placeholder="sk-xxxx..."
+    )
 
-.stButton > button {
-    background-color: #1de9b6;
-    color: black;
-    border-radius: 10px;
-    padding: 10px 20px;
-}
-</style>
-""", unsafe_allow_html=True)
+    if api_key:
+        st.sidebar.success("API key added ✅")
+    else:
+        st.sidebar.warning("Please enter API key")
 
 # =========================================
 # HEADER
 # =========================================
-st.markdown('<div class="title">📊 DataMind AI</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtitle">Upload data → Ask questions → Get AI insights</div>', unsafe_allow_html=True)
+st.title("📊 DataMind AI")
+st.caption("Upload data → Ask questions → Get AI insights")
 
 # =========================================
 # FILE UPLOAD
@@ -65,14 +49,11 @@ if uploaded_file:
     st.success("File uploaded successfully!")
 
     # Read file
-    import pandas as pd
-
     if uploaded_file.name.endswith(".csv"):
         df = pd.read_csv(uploaded_file)
     else:
         df = pd.read_excel(uploaded_file)
 
-    st.write("Preview:")
     st.dataframe(df.head())
 
     # =========================================
@@ -84,24 +65,31 @@ if uploaded_file:
     # GENERATE INSIGHT
     # =========================================
     if st.button("Generate Insight"):
-        if not user_query:
-            st.warning("Please enter a question first.")
+
+        if not api_key:
+            st.error("❌ Please enter your API key in sidebar")
+
+        elif not user_query:
+            st.warning("Please enter a question")
+
         else:
+            from openai import OpenAI
+            client = OpenAI(api_key=api_key)
+
             with st.spinner("Analyzing your data..."):
 
-                # Convert dataframe summary (IMPORTANT)
-                data_summary = df.describe(include="all").to_string()
+                summary = df.describe(include="all").to_string()
 
                 prompt = f"""
                 You are a data analyst.
 
-                Here is the dataset summary:
-                {data_summary}
+                Dataset summary:
+                {summary}
 
-                User question:
+                Question:
                 {user_query}
 
-                Provide clear insights.
+                Give clear insights.
                 """
 
                 response = client.chat.completions.create(
@@ -111,5 +99,5 @@ if uploaded_file:
 
                 answer = response.choices[0].message.content
 
-                st.success("Insight:")
+                st.success("Insight")
                 st.write(answer)
