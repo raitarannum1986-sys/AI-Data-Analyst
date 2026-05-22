@@ -3,21 +3,34 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from openai import AzureOpenAI
 
-# ─────────────────────────────
-# PAGE CONFIG
-# ─────────────────────────────
 st.set_page_config(page_title="DataMind AI", layout="wide")
 
 # ─────────────────────────────
-# LOAD SECRETS (FIXED)
+# 🔐 API CONFIG (NEW)
 # ─────────────────────────────
-try:
-    AZURE_ENDPOINT = st.secrets["MODEL_ENDPOINT"]
-    API_KEY = st.secrets["AZURE_OPENAI_API_KEY"]
-    MODEL_NAME = st.secrets["CHAT_MODEL_NAME"]
-    API_VERSION = st.secrets.get("API_VERSION", "2024-02-15-preview")
-except Exception:
-    st.error("❌ Missing API configuration. Please set Streamlit secrets.")
+with st.sidebar:
+    st.markdown("### 🔐 API Configuration")
+
+    use_custom = st.toggle("Use your own API")
+
+    if use_custom:
+        AZURE_ENDPOINT = st.text_input("Azure Endpoint")
+        API_KEY = st.text_input("API Key", type="password")
+        MODEL_NAME = st.text_input("Deployment Name")
+        API_VERSION = st.text_input("API Version", value="2024-02-15-preview")
+    else:
+        try:
+            AZURE_ENDPOINT = st.secrets["MODEL_ENDPOINT"]
+            API_KEY = st.secrets["AZURE_OPENAI_API_KEY"]
+            MODEL_NAME = st.secrets["CHAT_MODEL_NAME"]
+            API_VERSION = st.secrets.get("API_VERSION", "2024-02-15-preview")
+        except Exception:
+            st.error("❌ Missing API configuration in secrets.")
+            st.stop()
+
+# Validation
+if not AZURE_ENDPOINT or not API_KEY or not MODEL_NAME:
+    st.warning("⚠️ Please provide API details to continue.")
     st.stop()
 
 # ─────────────────────────────
@@ -44,28 +57,29 @@ uploaded_file = st.file_uploader(
 )
 
 # ─────────────────────────────
-# LLM DATA AGENT
+# DATA AGENT
 # ─────────────────────────────
 def data_agent_llm(query, df):
     sample = df.head(10).to_string()
 
     prompt = f"""
-You are a data analyst.
+You are a senior data analyst.
 
-Here is a dataset sample:
+Dataset sample:
 {sample}
 
 User question:
 {query}
 
 Instructions:
-- Provide clear insights
-- Explain patterns if possible
-- Suggest trends or observations
+- Provide structured insights
+- Highlight trends
+- Mention key observations
+- Suggest insights clearly
 """
 
     response = client.chat.completions.create(
-        model=MODEL_NAME,  # IMPORTANT: Azure deployment name
+        model=MODEL_NAME,
         messages=[
             {"role": "system", "content": "You are a helpful data analyst."},
             {"role": "user", "content": prompt}
@@ -75,9 +89,8 @@ Instructions:
 
     return response.choices[0].message.content
 
-
 # ─────────────────────────────
-# CHART GENERATOR
+# CHART
 # ─────────────────────────────
 def generate_chart(df):
     numeric_cols = df.select_dtypes(include="number").columns
@@ -92,7 +105,6 @@ def generate_chart(df):
     ax.set_title(f"{col} Trend")
 
     return fig
-
 
 # ─────────────────────────────
 # MAIN FLOW
@@ -114,7 +126,14 @@ if uploaded_file:
     st.subheader("📄 Data Preview")
     st.dataframe(df.head())
 
-    # USER QUERY
+    st.markdown("### 💡 Try asking:")
+    st.markdown("""
+    - Show sales trend  
+    - Which region performs best?  
+    - Give key insights  
+    - Compare revenue and profit  
+    """)
+
     query = st.text_input("Ask a question about your data:")
 
     if query:
@@ -129,8 +148,8 @@ if uploaded_file:
         st.subheader("🧠 AI Insight")
         st.write(answer)
 
-        # AUTO CHART (simple logic)
-        if any(word in query.lower() for word in ["chart", "plot", "trend"]):
+        # Auto chart
+        if any(word in query.lower() for word in ["trend", "chart", "plot"]):
             fig = generate_chart(df)
             if fig:
                 st.subheader("📊 Chart")
