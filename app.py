@@ -1,4 +1,5 @@
 import streamlit as st
+from openai import OpenAI
 
 # =========================================
 # PAGE CONFIG
@@ -10,85 +11,52 @@ st.set_page_config(
 )
 
 # =========================================
-# FORCE FULL WIDTH + REMOVE DEFAULT PADDING
+# LOAD OPENAI CLIENT
+# =========================================
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
+# =========================================
+# CUSTOM CSS
 # =========================================
 st.markdown("""
 <style>
-
-/* Remove default padding */
-.block-container {
-    padding-top: 2rem;
-    padding-left: 2rem;
-    padding-right: 2rem;
-}
-
-/* Background */
 .stApp {
     background-color: #0b1c17;
     color: white;
 }
 
-/* Center everything */
-.centered {
-    text-align: center;
-    margin-top: 60px;
-}
-
-/* Title */
 .title {
-    font-size: 60px;
-    font-weight: 700;
+    font-size: 50px;
+    font-weight: bold;
+    text-align: center;
     color: #1de9b6;
 }
 
-/* Subtitle */
 .subtitle {
-    font-size: 18px;
+    text-align: center;
     color: #7bd3c6;
-    margin-top: 10px;
+    margin-bottom: 30px;
 }
 
-/* Upload box styling */
-[data-testid="stFileUploader"] {
-    background-color: #132f2a;
-    border-radius: 15px;
-    padding: 30px;
-}
-
-/* Button styling */
 .stButton > button {
     background-color: #1de9b6;
     color: black;
     border-radius: 10px;
     padding: 10px 20px;
-    font-weight: 600;
 }
-
 </style>
 """, unsafe_allow_html=True)
 
 # =========================================
-# HERO SECTION
+# HEADER
 # =========================================
-st.markdown('<div class="centered">', unsafe_allow_html=True)
-
 st.markdown('<div class="title">📊 DataMind AI</div>', unsafe_allow_html=True)
 st.markdown('<div class="subtitle">Upload data → Ask questions → Get AI insights</div>', unsafe_allow_html=True)
 
-st.markdown('</div>', unsafe_allow_html=True)
-
-st.write("")  # spacing
-
 # =========================================
-# FILE UPLOAD SECTION (CENTERED)
+# FILE UPLOAD
 # =========================================
-col1, col2, col3 = st.columns([1, 2, 1])
-
-with col2:
-    uploaded_file = st.file_uploader(
-        "Upload CSV or Excel file",
-        type=["csv", "xlsx"]
-    )
+uploaded_file = st.file_uploader("Upload CSV or Excel file", type=["csv", "xlsx"])
 
 # =========================================
 # AFTER UPLOAD
@@ -96,7 +64,52 @@ with col2:
 if uploaded_file:
     st.success("File uploaded successfully!")
 
-    st.text_input("Ask a question about your data")
+    # Read file
+    import pandas as pd
 
+    if uploaded_file.name.endswith(".csv"):
+        df = pd.read_csv(uploaded_file)
+    else:
+        df = pd.read_excel(uploaded_file)
+
+    st.write("Preview:")
+    st.dataframe(df.head())
+
+    # =========================================
+    # USER QUERY
+    # =========================================
+    user_query = st.text_input("Ask a question about your data")
+
+    # =========================================
+    # GENERATE INSIGHT
+    # =========================================
     if st.button("Generate Insight"):
-        st.info("Processing... (connect your LLM here)")
+        if not user_query:
+            st.warning("Please enter a question first.")
+        else:
+            with st.spinner("Analyzing your data..."):
+
+                # Convert dataframe summary (IMPORTANT)
+                data_summary = df.describe(include="all").to_string()
+
+                prompt = f"""
+                You are a data analyst.
+
+                Here is the dataset summary:
+                {data_summary}
+
+                User question:
+                {user_query}
+
+                Provide clear insights.
+                """
+
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[{"role": "user", "content": prompt}]
+                )
+
+                answer = response.choices[0].message.content
+
+                st.success("Insight:")
+                st.write(answer)
