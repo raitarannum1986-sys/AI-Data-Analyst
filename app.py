@@ -1,158 +1,120 @@
 import streamlit as st
-import pandas as pd
-import matplotlib.pyplot as plt
-from openai import AzureOpenAI
 
-st.set_page_config(page_title="DataMind AI", layout="wide")
-
-# ─────────────────────────────
-# 🔐 API CONFIG (NEW)
-# ─────────────────────────────
-with st.sidebar:
-    st.markdown("### 🔐 API Configuration")
-
-    use_custom = st.toggle("Use your own API")
-
-    if use_custom:
-        AZURE_ENDPOINT = st.text_input("Azure Endpoint")
-        API_KEY = st.text_input("API Key", type="password")
-        MODEL_NAME = st.text_input("Deployment Name")
-        API_VERSION = st.text_input("API Version", value="2024-02-15-preview")
-    else:
-        try:
-            AZURE_ENDPOINT = st.secrets["MODEL_ENDPOINT"]
-            API_KEY = st.secrets["AZURE_OPENAI_API_KEY"]
-            MODEL_NAME = st.secrets["CHAT_MODEL_NAME"]
-            API_VERSION = st.secrets.get("API_VERSION", "2024-02-15-preview")
-        except Exception:
-            st.error("❌ Missing API configuration in secrets.")
-            st.stop()
-
-# Validation
-if not AZURE_ENDPOINT or not API_KEY or not MODEL_NAME:
-    st.warning("⚠️ Please provide API details to continue.")
-    st.stop()
-
-# ─────────────────────────────
-# INIT CLIENT
-# ─────────────────────────────
-client = AzureOpenAI(
-    api_key=API_KEY,
-    azure_endpoint=AZURE_ENDPOINT,
-    api_version=API_VERSION
+# =========================================
+# PAGE CONFIG
+# =========================================
+st.set_page_config(
+    page_title="Care AI",
+    page_icon="🩺",
+    layout="wide"
 )
 
-# ─────────────────────────────
-# UI HEADER
-# ─────────────────────────────
-st.title("📊 DataMind AI")
-st.caption("Upload data → Ask questions → Get AI insights")
+# =========================================
+# CUSTOM CSS (KEY PART)
+# =========================================
+st.markdown("""
+<style>
+body {
+    background-color: #0b1c17;
+    color: #e6f4f1;
+}
 
-# ─────────────────────────────
-# FILE UPLOAD
-# ─────────────────────────────
-uploaded_file = st.file_uploader(
-    "Upload CSV or Excel file",
-    type=["csv", "xlsx"]
-)
+.main {
+    text-align: center;
+}
 
-# ─────────────────────────────
-# DATA AGENT
-# ─────────────────────────────
-def data_agent_llm(query, df):
-    sample = df.head(10).to_string()
+.title {
+    font-size: 48px;
+    font-weight: 700;
+    color: #1de9b6;
+    margin-bottom: 10px;
+}
 
-    prompt = f"""
-You are a senior data analyst.
+.subtitle {
+    font-size: 14px;
+    letter-spacing: 2px;
+    color: #7bd3c6;
+    margin-bottom: 20px;
+}
 
-Dataset sample:
-{sample}
+.desc {
+    font-size: 16px;
+    max-width: 700px;
+    margin: auto;
+    color: #b0cfc9;
+    line-height: 1.6;
+}
 
-User question:
-{query}
+.chip {
+    display: inline-block;
+    padding: 10px 18px;
+    margin: 8px;
+    border-radius: 25px;
+    background-color: #132f2a;
+    color: #8fe3d4;
+    font-size: 14px;
+}
 
-Instructions:
-- Provide structured insights
-- Highlight trends
-- Mention key observations
-- Suggest insights clearly
-"""
+.footer {
+    margin-top: 40px;
+    font-size: 14px;
+}
+</style>
+""", unsafe_allow_html=True)
 
-    response = client.chat.completions.create(
-        model=MODEL_NAME,
-        messages=[
-            {"role": "system", "content": "You are a helpful data analyst."},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.3
-    )
+# =========================================
+# HERO SECTION
+# =========================================
+st.markdown('<div class="main">', unsafe_allow_html=True)
 
-    return response.choices[0].message.content
+st.markdown('<div class="title">Care AI</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle">HEALTHCARE & NUTRITION ASSISTANT</div>', unsafe_allow_html=True)
 
-# ─────────────────────────────
-# CHART
-# ─────────────────────────────
-def generate_chart(df):
-    numeric_cols = df.select_dtypes(include="number").columns
+st.markdown("""
+<div class="desc">
+Your personalised AI health companion — get science-backed nutritional guidance 
+tailored to your health goals, conditions, and lifestyle on a weekly, monthly, 
+and quarterly basis.
+</div>
+""", unsafe_allow_html=True)
 
-    if len(numeric_cols) == 0:
-        return None
+# =========================================
+# FEATURES (CHIPS)
+# =========================================
+st.markdown("""
+<div>
+<span class="chip">● Weekly Plans</span>
+<span class="chip">● Monthly Roadmaps</span>
+<span class="chip">● Quarterly Goals</span>
+<span class="chip">● Health Profiling</span>
+<span class="chip">● Macro Insights</span>
+</div>
+""", unsafe_allow_html=True)
 
-    col = numeric_cols[0]
+st.markdown('</div>', unsafe_allow_html=True)
 
-    fig, ax = plt.subplots()
-    df[col].plot(kind="line", ax=ax)
-    ax.set_title(f"{col} Trend")
+# =========================================
+# AUTH SECTION
+# =========================================
+st.divider()
 
-    return fig
+col1, col2 = st.columns(2)
 
-# ─────────────────────────────
-# MAIN FLOW
-# ─────────────────────────────
-if uploaded_file:
+with col1:
+    st.subheader("Sign In")
+    email = st.text_input("Email")
+    password = st.text_input("Password", type="password")
+    if st.button("Login"):
+        st.success("Logged in successfully (dummy)")
 
-    try:
-        if uploaded_file.name.endswith(".csv"):
-            df = pd.read_csv(uploaded_file)
-        else:
-            df = pd.read_excel(uploaded_file)
+with col2:
+    st.subheader("Create Account")
+    new_email = st.text_input("New Email")
+    new_password = st.text_input("New Password", type="password")
+    if st.button("Sign Up"):
+        st.success("Account created (dummy)")
 
-    except Exception as e:
-        st.error(f"❌ Error reading file: {e}")
-        st.stop()
-
-    st.success("✅ File uploaded successfully!")
-
-    st.subheader("📄 Data Preview")
-    st.dataframe(df.head())
-
-    st.markdown("### 💡 Try asking:")
-    st.markdown("""
-    - Show sales trend  
-    - Which region performs best?  
-    - Give key insights  
-    - Compare revenue and profit  
-    """)
-
-    query = st.text_input("Ask a question about your data:")
-
-    if query:
-
-        with st.spinner("🧠 Analyzing data..."):
-            try:
-                answer = data_agent_llm(query, df)
-            except Exception as e:
-                st.error(f"❌ AI Error: {e}")
-                st.stop()
-
-        st.subheader("🧠 AI Insight")
-        st.write(answer)
-
-        # Auto chart
-        if any(word in query.lower() for word in ["trend", "chart", "plot"]):
-            fig = generate_chart(df)
-            if fig:
-                st.subheader("📊 Chart")
-                st.pyplot(fig)
-            else:
-                st.info("No numeric data available for chart.")
+# =========================================
+# FOOTER
+# =========================================
+st.markdown('<div class="footer">Built with ❤️ using Streamlit</div>', unsafe_allow_html=True)
