@@ -9,10 +9,10 @@ st.set_page_config(page_title="DataMind AI", layout="wide")
 # ─────────────────────────────
 # LOAD ENV (or use st.secrets)
 # ─────────────────────────────
-AZURE_ENDPOINT = os.getenv("MODEL_ENDPOINT")
-API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
-MODEL_NAME = os.getenv("CHAT_MODEL_NAME")
-API_VERSION = os.getenv("API_VERSION", "2024-02-15-preview")
+AZURE_ENDPOINT = st.secrets["MODEL_ENDPOINT"]
+API_KEY = st.secrets["AZURE_OPENAI_API_KEY"]
+MODEL_NAME = st.secrets["CHAT_MODEL_NAME"]
+API_VERSION = st.secrets.get("API_VERSION", "2024-02-15-preview")
 
 client = AzureOpenAI(
     api_key=API_KEY,
